@@ -3,63 +3,76 @@ set -e
 
 G=/sys/kernel/config/usb_gadget/g1
 
-# Clean up any existing gadget
+# ---------------------------
+# CLEANUP EXISTING GADGET
+# ---------------------------
 if [ -d "$G" ]; then
-  echo "" > $G/UDC || true
-  rm -rf $G
+    echo "Cleaning up..."
+    echo "" | sudo tee $G/UDC || true
+    sudo find $G -type l -delete
+    sudo find $G -depth -type d -exec rmdir {} \; 2>/dev/null || true
 fi
 
-mkdir -p $G
+# ---------------------------
+# CREATE NEW GADGET
+# ---------------------------
+echo "Creating new gadget..."
+sudo mkdir -p $G
 cd $G
 
-# USB IDs (Linux Foundation demo VID, fine for testing)
-echo 0x1d6b > idVendor
-echo 0x0104 > idProduct
-echo 0x0100 > bcdDevice
-echo 0x0200 > bcdUSB
+# USB IDs (Linux Foundation VID for testing)
+echo 0x1d6b | sudo tee idVendor
+echo 0x0104 | sudo tee idProduct
+echo 0x0100 | sudo tee bcdDevice
+echo 0x0200 | sudo tee bcdUSB
 
-# Device strings
-mkdir -p strings/0x409
-echo "1234567890" > strings/0x409/serialnumber
-echo "Raspberry Pi" > strings/0x409/manufacturer
-echo "Pi USB Webcam" > strings/0x409/product
+# ---------------------------
+# DEVICE STRINGS
+# ---------------------------
+sudo mkdir -p strings/0x409
+echo "1234567890" | sudo tee strings/0x409/serialnumber
+echo "Raspberry Pi" | sudo tee strings/0x409/manufacturer
+echo "Pi USB Webcam" | sudo tee strings/0x409/product
 
-# Configuration
-mkdir -p configs/c.1/strings/0x409
-echo "UVC Webcam" > configs/c.1/strings/0x409/configuration
-echo 250 > configs/c.1/MaxPower
+# ---------------------------
+# CONFIGURATION
+# ---------------------------
+sudo mkdir -p configs/c.1/strings/0x409
+echo "UVC Webcam" | sudo tee configs/c.1/strings/0x409/configuration
 
-# -------------------------
+# ---------------------------
 # UVC FUNCTION (VIDEO ONLY)
-# -------------------------
+# ---------------------------
+sudo mkdir -p functions/uvc.usb0
 
-mkdir -p functions/uvc.usb0
+U=functions/uvc.usb0/streaming/uncompressed/u
+F=$U/frame/f1
 
-# ---- Control interface ----
-mkdir -p functions/uvc.usb0/control/header/h
-ln -s functions/uvc.usb0/control/header/h functions/uvc.usb0/control/class/fs
-ln -s functions/uvc.usb0/control/header/h functions/uvc.usb0/control/class/ss
+# Define 720p 30fps
+sudo mkdir -p $F
+echo 1280 | sudo tee $F/wWidth
+echo 720  | sudo tee $F/wHeight
+echo 1843200 | sudo tee $F/dwMaxVideoFrameBufferSize # (1280*720*2)
+cat <<EOF | sudo tee $F/dwFrameInterval
+333333
+EOF
 
-# ---- Streaming interface ----
-mkdir -p functions/uvc.usb0/streaming/uncompressed/u
-mkdir -p functions/uvc.usb0/streaming/uncompressed/u/frame/f1
+# Color Matching (Crucial for Windows/macOS)
+sudo mkdir -p $U/../../color_matching/default
 
-# 720p @ 30fps
-echo 1280 > functions/uvc.usb0/streaming/uncompressed/u/frame/f1/wWidth
-echo 720  > functions/uvc.usb0/streaming/uncompressed/u/frame/f1/wHeight
-echo 333333 > functions/uvc.usb0/streaming/uncompressed/u/frame/f1/dwFrameInterval
+# Streaming Headers & Symlinks
+sudo mkdir -p functions/uvc.usb0/streaming/header/h
+sudo ln -s $U functions/uvc.usb0/streaming/header/h/u
+sudo ln -s functions/uvc.usb0/streaming/header/h functions/uvc.usb0/streaming/class/fs
+sudo ln -s functions/uvc.usb0/streaming/header/h functions/uvc.usb0/streaming/class/hs
+sudo ln -s functions/uvc.usb0/streaming/header/h functions/uvc.usb0/streaming/class/ss
 
-# Streaming headers
-mkdir -p functions/uvc.usb0/streaming/header/h
-ln -s functions/uvc.usb0/streaming/uncompressed/u \
-      functions/uvc.usb0/streaming/header/h/u
-ln -s functions/uvc.usb0/streaming/header/h \
-      functions/uvc.usb0/streaming/class/fs
-ln -s functions/uvc.usb0/streaming/header/h \
-      functions/uvc.usb0/streaming/class/ss
+# Control Headers & Symlinks
+sudo mkdir -p functions/uvc.usb0/control/header/h
+sudo ln -s functions/uvc.usb0/control/header/h functions/uvc.usb0/control/class/fs
+sudo ln -s functions/uvc.usb0/control/header/h functions/uvc.usb0/control/class/ss
 
-# Attach function to configuration
-ln -s functions/uvc.usb0 configs/c.1/
-
-# Enable gadget
-echo "$(ls /sys/class/udc)" > UDC
+# Bind
+sudo ln -s functions/uvc.usb0 configs/c.1/
+ls /sys/class/udc | head -n1 | sudo tee $G/UDC
+echo "UVC gadget active."
