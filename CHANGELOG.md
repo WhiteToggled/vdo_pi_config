@@ -1,5 +1,37 @@
 # Changelog
 
+# Release 9.1.0
+
+**Release Date:** 2026-01-16
+
+## ✨ Minor Release
+
+This release includes new features and improvements.
+
+### Commits
+
+- config (89a758f)
+- ci(scripts): update Gemini model to gemini-3-flash-preview (29ce989)
+- fix(rpi): Enhance MS2109 device detection via USB IDs (6c404e2)
+- fix(rpi): Resolve UVC capture quirks for legacy GStreamer (7704fe1)
+- fix(rpi): Auto-detect and prefer v4l2 for UVC on GStreamer < 1.20 (4b535bd)
+- feat(rpi): Add --soft-jpeg option for software JPEG decode (41b10b8)
+- fix(gstreamer): Gate SDP patches to GStreamer < 1.20 (a45a77a)
+- chore: release v9.0.0 [release] (4898daf)
+- fix(gstreamer): Make Gst 1.18 audio SDP Chrome-compatible (aeedb68)
+- chore: release v8.0.0 [release] (54f0d54)
+
+### Installation
+
+For installation instructions, please refer to the platform-specific guides:
+- [Raspberry Pi](./raspberry_pi/README.md)
+- [NVIDIA Jetson](./nvidia_jetson/README.md)
+- [Orange Pi](./orangepi/README.md)
+- [Ubuntu](./ubuntu/README.md)
+
+
+---
+
 # Release 9.0.0
 
 **Release Date:** 2025-12-18
