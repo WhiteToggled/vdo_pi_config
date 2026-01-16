@@ -1,0 +1,19 @@
+[Unit]
+Description=Raspberry Ninja to UVC Gadget Streamer
+# Ensure the USB hardware is ready before starting the scripts
+After=uvc-gadget.service
+Requires=uvc-gadget.service
+
+[Service]
+Type=simple
+# Change 'pi' to your actual username if different
+User=pi
+WorkingDirectory=/home/pi
+ExecStart=/usr/local/bin/webcam_launcher.sh
+Restart=always
+RestartSec=5
+# Ensures Python output shows up in logs immediately
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
