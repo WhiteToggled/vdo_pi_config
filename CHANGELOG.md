@@ -1,5 +1,31 @@
 # Changelog
 
+# Release 9.2.0
+
+**Release Date:** 2026-01-16
+
+## ✨ Minor Release
+
+This release includes new features and improvements.
+
+### Commits
+
+- thing (90fc7e5)
+- thing (a37d8b0)
+- thing (c9cf312)
+- thing (07f0bcf)
+
+### Installation
+
+For installation instructions, please refer to the platform-specific guides:
+- [Raspberry Pi](./raspberry_pi/README.md)
+- [NVIDIA Jetson](./nvidia_jetson/README.md)
+- [Orange Pi](./orangepi/README.md)
+- [Ubuntu](./ubuntu/README.md)
+
+
+---
+
 # Release 9.1.0
 
 **Release Date:** 2026-01-16
