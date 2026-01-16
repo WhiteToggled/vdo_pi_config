@@ -1,52 +1,55 @@
 #!/bin/bash
-# No 'set -e' for the cleanup part to ensure it wipes everything
+# --- 1. DEFINE PATHS ---
 G=/sys/kernel/config/usb_gadget/g1
 
-echo "Wiping old configuration..."
-echo "" > $G/UDC 2>/dev/null || true
-find $G -type l -delete 2>/dev/null || true
-find $G -depth -type d -exec rmdir {} \; 2>/dev/null || true
+# --- 2. CLEANUP ---
+if [ -d "$G" ]; then
+    echo "Cleaning up existing gadget..."
+    echo "" | sudo tee $G/UDC > /dev/null || true
+    sudo find $G/configs/c.1/ -maxdepth 1 -type l -delete 2>/dev/null || true
+    sudo find $G -depth -type d -exec rmdir {} \; 2>/dev/null || true
+fi
 
-set -e # Stop if any creation step fails
-echo "Creating Gadget..."
-mkdir -p $G
-echo 0x1d6b > $G/idVendor
-echo 0x0104 > $G/idProduct
-echo 0x0200 > $G/bcdUSB
-echo 0xef > $G/bDeviceClass
-echo 0x02 > bDeviceSubClass
-echo 0x01 > bDeviceProtocol
+# --- 3. CREATE GADGET ---
+sudo mkdir -p $G
+echo 0x1d6b | sudo tee $G/idVendor > /dev/null
+echo 0x0104 | sudo tee $G/idProduct > /dev/null
+echo 0x0200 | sudo tee $G/bcdUSB > /dev/null
+echo 0xef | sudo tee $G/bDeviceClass > /dev/null
+echo 0x02 | sudo tee $G/bDeviceSubClass > /dev/null
+echo 0x01 | sudo tee $G/bDeviceProtocol > /dev/null
 
-mkdir -p $G/strings/0x409
-echo "1234567890" > $G/strings/0x409/serialnumber
-echo "Raspberry Pi" > $G/strings/0x409/manufacturer
-echo "Pi USB Webcam" > $G/strings/0x409/product
+sudo mkdir -p $G/strings/0x409
+echo "1234567890" | sudo tee $G/strings/0x409/serialnumber > /dev/null
+echo "Raspberry Pi" | sudo tee $G/strings/0x409/manufacturer > /dev/null
+echo "Pi USB Webcam" | sudo tee $G/strings/0x409/product > /dev/null
 
-echo "Creating UVC Function..."
-# Create the function folder first
-mkdir -p $G/functions/uvc.0
+# --- 4. UVC FUNCTION (The Strict Part) ---
+# We create the format folder before the frame folder
+sudo mkdir -p $G/functions/uvc.0/control/header/h
+sudo mkdir -p $G/functions/uvc.0/streaming/mjpeg/m/f1
 
-# Define the stream format and frame (MJPEG 720p)
-mkdir -p $G/functions/uvc.0/streaming/mjpeg/m/f1
-echo 1280 > $G/functions/uvc.0/streaming/mjpeg/m/f1/wWidth
-echo 720 > $G/functions/uvc.0/streaming/mjpeg/m/f1/wHeight
-echo 333333 > $G/functions/uvc.0/streaming/mjpeg/m/f1/dwFrameInterval
+# Frame Settings (1280x720)
+echo 1280 | sudo tee $G/functions/uvc.0/streaming/mjpeg/m/f1/wWidth > /dev/null
+echo 720 | sudo tee $G/functions/uvc.0/streaming/mjpeg/m/f1/wHeight > /dev/null
+echo 1843200 | sudo tee $G/functions/uvc.0/streaming/mjpeg/m/f1/dwMaxVideoFrameBufferSize > /dev/null
+echo 333333 | sudo tee $G/functions/uvc.0/streaming/mjpeg/m/f1/dwFrameInterval > /dev/null
 
-# Link headers (Essential for the OS to recognize the camera)
-mkdir -p $G/functions/uvc.0/streaming/header/h
-ln -s $G/functions/uvc.0/streaming/mjpeg/m $G/functions/uvc.0/streaming/header/h/m
-ln -s $G/functions/uvc.0/streaming/header/h $G/functions/uvc.0/streaming/class/fs
-ln -s $G/functions/uvc.0/streaming/header/h $G/functions/uvc.0/streaming/class/hs
+# --- 5. HEADERS & LINKING ---
+sudo mkdir -p $G/functions/uvc.0/streaming/header/h
+sudo ln -s $G/functions/uvc.0/streaming/mjpeg/m $G/functions/uvc.0/streaming/header/h/m
+sudo ln -s $G/functions/uvc.0/streaming/header/h $G/functions/uvc.0/streaming/class/fs
+sudo ln -s $G/functions/uvc.0/streaming/header/h $G/functions/uvc.0/streaming/class/hs
 
-mkdir -p $G/functions/uvc.0/control/header/h
-ln -s $G/functions/uvc.0/control/header/h $G/functions/uvc.0/control/class/fs
+sudo ln -s $G/functions/uvc.0/control/header/h $G/functions/uvc.0/control/class/fs
 
-# Bind to configuration
-mkdir -p $G/configs/c.1/strings/0x409
-echo "UVC" > $G/configs/c.1/strings/0x409/configuration
-ln -s $G/functions/uvc.0 $G/configs/c.1/uvc.0
+# --- 6. BIND TO CONFIGURATION ---
+sudo mkdir -p $G/configs/c.1/strings/0x409
+echo "UVC" | sudo tee $G/configs/c.1/strings/0x409/configuration > /dev/null
+sudo ln -s $G/functions/uvc.0 $G/configs/c.1/uvc.0
 
-# Final Activation
-echo "Binding to UDC..."
-ls /sys/class/udc > $G/UDC
-echo "Done! Check ls /dev/video*"
+# --- 7. BIND TO HARDWARE ---
+# This finds the Pi 4 UDC (fe980000.usb) and tells it to turn on
+ls /sys/class/udc | head -n1 | sudo tee $G/UDC > /dev/null
+
+echo "UVC Hardware initialized. Check 'ls /dev/video*'"
