@@ -1,0 +1,10 @@
+#!/bin/bash
+#
+modprobe v4l2loopback video_nr=0 card_label="Pi UVC Loopback" exclusive_caps=1
+
+python3 /home/pi/raspberry-ninja/publish.py --view tahir2242 --v4l2sink 0 --v4l2sink-format MJPEG &
+sleep 5
+
+sudo /home/pi/uvc-gadget/multi-gadget.sh
+sudo /home/pi/uvc-gadget/uvc-gadget -f1 -s2 -r1  -u /dev/video1 -v /dev/video0
+
